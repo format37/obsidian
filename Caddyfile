@@ -1,0 +1,16 @@
+{
+    email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+    encode zstd gzip
+
+    request_body {
+        max_size 256MB
+    }
+
+    reverse_proxy couchdb:5984 {
+        header_up Host {host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

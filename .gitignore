@@ -1,0 +1,6 @@
+.env
+data/
+caddy_data/
+caddy_config/
+backups/
+*.log

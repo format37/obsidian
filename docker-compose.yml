@@ -1,0 +1,30 @@
+services:
+  couchdb:
+    image: oleduc/docker-obsidian-livesync-couchdb:master
+    container_name: obsidian-couchdb
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+    volumes:
+      - ./data/couchdb:/opt/couchdb/data
+      - ./data/couchdb-etc:/opt/couchdb/etc/local.d
+    networks:
+      - external
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5984/ | grep -q '\"couchdb\":\"Welcome\"'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  external:
+    name: ${EXTERNAL_NETWORK}
+    external: true
