@@ -63,7 +63,8 @@ docker_curl() {
 # ---- Internal checks ---------------------------------------------------------
 
 info "Internal check 1/2 — welcome JSON on shared network"
-welcome=$(docker_curl -sf "http://${CONTAINER_NAME}:5984/" || true)
+# The base image sets require_valid_user=true, so even GET / needs credentials.
+welcome=$(docker_curl -sf -u "${COUCHDB_USER}:${COUCHDB_PASSWORD}" "http://${CONTAINER_NAME}:5984/" || true)
 if [[ -z "$welcome" ]]; then
     fail "Could not reach http://${CONTAINER_NAME}:5984/ — is the container up and on network '${EXTERNAL_NETWORK}'?"
 fi
@@ -91,7 +92,7 @@ fi
 
 PUBLIC_URL="${PUBLIC_URL%/}"
 info "External check 1/3 — welcome JSON via ${PUBLIC_URL}/"
-public_welcome=$(curl -sf "${PUBLIC_URL}/" || true)
+public_welcome=$(curl -sf -u "${COUCHDB_USER}:${COUCHDB_PASSWORD}" "${PUBLIC_URL}/" || true)
 if [[ -z "$public_welcome" ]]; then
     fail "Could not reach ${PUBLIC_URL}/ — proxy down, wrong route, or TLS broken?"
 fi
@@ -112,9 +113,10 @@ echo "$headers" | grep -iq "Access-Control-Allow-Origin:[[:space:]]*app://obsidi
 pass "CORS preserved through the proxy"
 
 info "External check 3/3 — TLS chain validates against system trust store"
-# --cacert /etc/ssl/certs/ca-certificates.crt is the default on most distros;
-# letting curl use its defaults is fine. A self-signed cert will fail -sSf.
-curl -sSfI "${PUBLIC_URL}/" >/dev/null \
+# We already proved the endpoint responds (check 1/3 with auth). Here we only
+# care that curl accepted the TLS chain. -sS (no -f) tolerates the 401 that
+# HEAD without auth returns — TLS validation happens before any HTTP reply.
+curl -sSI "${PUBLIC_URL}/" >/dev/null \
     || fail "TLS validation failed (self-signed / expired / wrong-name cert?)"
 pass "TLS chain validates"
 
